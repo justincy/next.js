@@ -112,6 +112,14 @@ function fetchNextData(
         credentials: 'same-origin',
       }
     ).then(res => {
+      // Handle redirects from getServerSideProps.
+      // We handle this first because res.ok only includes 2xx responses
+      // and redirects are 3xx so they aren't "ok".
+      if (res.redirected) {
+        return {
+          __N_REDIRECT: res.url.replace(window.location.origin, ''),
+        }
+      }
       if (!res.ok) {
         if (--attempts > 0 && res.status >= 500) {
           return getResponse()
@@ -649,6 +657,10 @@ export default class Router implements BaseRouter {
                 } as any
               )
         ).then(props => {
+          if (props.__N_REDIRECT) {
+            this.push(props.__N_REDIRECT)
+            delete props.__N_REDIRECT
+          }
           routeInfo.props = props
           this.components[route] = routeInfo
           return routeInfo
